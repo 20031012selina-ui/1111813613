@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>數字搶地盤計算助手</title>
+<style>
+  :root {
+    --bg-color: #FFFDF5;
+    --card-bg: #FFFFFF;
+    --primary: #FFB800;
+    --primary-light: #FFF3CC;
+    --p1-color: #FF6B6B;
+    --p1-light: #FFE8E8;
+    --p2-color: #4D96FF;
+    --p2-light: #E6F0FF;
+    --text-main: #333333;
+    --text-muted: #666666;
+    --border-color: #EAE3D2;
+    --radius: 16px;
+  }
+
+  * {
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif;
+  }
+
+  body {
+    margin: 0;
+    padding: 16px;
+    background-color: var(--bg-color);
+    background-image: radial-gradient(#F3E5AB 1.5px, transparent 1.5px);
+    background-size: 24px 24px;
+    color: var(--text-main);
+    line-height: 1.5;
+  }
+
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+  }
+
+  header {
+    text-align: center;
+    background: var(--card-bg);
+    padding: 18px;
+    border-radius: var(--radius);
+    border: 2px solid var(--border-color);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    margin-bottom: 16px;
+  }
+
+  header h1 {
+    margin: 0 0 6px 0;
+    font-size: 1.6rem;
+    color: #2C2C2C;
+  }
+
+  .rule-badges {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    font-size: 0.85rem;
+  }
+
+  .badge {
+    background: var(--primary-light);
+    color: #8A5A00;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
+
+  .badge.red { color: #C92A2A; background: #FFE3E3; }
+
+  .card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    border: 2px solid var(--border-color);
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+  }
+
+  .section-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin: 0 0 12px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* 地盤設定區 */
+  .territories-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+  }
+
+  @media (max-width: 600px) {
+    .territories-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .territory-box {
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    padding: 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #FAFAFA;
+  }
+
+  .territory-box.active {
+    border-color: var(--primary);
+    background: var(--primary-light);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(255, 184, 0, 0.2);
+  }
+
+  .territory-box.done-p1 { border-color: var(--p1-color); background: var(--p1-light); }
+  .territory-box.done-p2 { border-color: var(--p2-color); background: var(--p2-light); }
+  .territory-box.done-tie { border-color: #999; background: #EEEEEE; }
+
+  .territory-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+
+  .territory-input {
+    width: 100%;
+    text-align: center;
+    font-size: 1.3rem;
+    font-weight: 800;
+    border: 1px solid #DDD;
+    border-radius: 8px;
+    padding: 4px;
+    background: #FFF;
+  }
+
+  .territory-status {
+    font-size: 0.75rem;
+    margin-top: 4px;
+    font-weight: 700;
+  }
+
+  .helper-toggle {
+    font-size: 0.8rem;
+    background: #F0F0F0;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #444;
+    font-weight: 600;
+  }
+
+  .helper-panel {
+    display: none;
+    margin-top: 12px;
+    padding: 12px;
+    background: #F9F7F0;
+    border-radius: 12px;
+    font-size: 0.9rem;
+  }
+
+  .helper-panel.open { display: block; }
+
+  /* 玩家輸入區 */
+  .players-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  @media (max-width: 720px) {
+    .players-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .player-panel {
+    border-radius: var(--radius);
+    padding: 14px;
+    border: 2px solid;
+  }
+
+  .player-panel.p1 {
+    border-color: var(--p1-color);
+    background: #FFFDFD;
+  }
+
+  .player-panel.p2 {
+    border-color: var(--p2-color);
+    background: #FDFEFF;
+  }
+
+  .player-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .player-name {
+    font-size: 1.15rem;
+    font-weight: 800;
+    border: none;
+    background: transparent;
+    border-bottom: 2px dashed #CCC;
+    width: 130px;
+    padding: 2px 4px;
+  }
+
+  .p1 .player-name { color: #D94848; }
+  .p2 .player-name { color: #2B7DE9; }
+
+  .card-slot {
+    background: #FFF;
+    border: 1px solid #E5E5E5;
+    border-radius: 12px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .slot-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    min-width: 56px;
+  }
+
+  select {
+    padding: 6px 8px;
+    border-radius: 8px;
+    border: 1.5px solid #D0D0D0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    background: #FFF;
+    cursor: pointer;
+    flex: 1;
+  }
+
+  .bracket-select-box {
+    background: #FFF9E6;
+    border: 1.5px dashed #F59F00;
+    border-radius: 10px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #8A5A00;
+  }
+
+  .formula-preview {
+    background: #F4F4F6;
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+    margin-top: 8px;
+  }
+
+  .formula-text {
+    font-size: 1.2rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+  }
+
+  .diff-text {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .invalid-check {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.82rem;
+    color: #C92A2A;
+    margin-top: 8px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  .action-bar {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.2s;
+  }
+
+  .btn:active { transform: scale(0.98); }
+
+  .btn-primary {
+    background: var(--primary);
+    color: #2C2C2C;
+    box-shadow: 0 4px 10px rgba(255, 184, 0, 0.3);
+  }
+
+  .btn-secondary {
+    background: #EFEFEF;
+    color: #444;
+    flex: 0.4;
+  }
+
+  .result-banner {
+    display: none;
+    text-align: center;
+    padding: 14px;
+    border-radius: 12px;
+    margin-top: 12px;
+    font-weight: 800;
+    font-size: 1.1rem;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+    text-align: center;
+  }
+
+  th, td {
+    padding: 8px 6px;
+    border-bottom: 1px solid #EEE;
+  }
+
+  th {
+    background: #FAF6EB;
+    color: #665222;
+    font-weight: 700;
+  }
+
+  .final-box {
+    margin-top: 12px;
+    padding: 14px;
+    background: linear-gradient(135deg, #FFF6D6, #FFE8A3);
+    border-radius: 12px;
+    text-align: center;
+    font-weight: 800;
+    border: 2px solid var(--primary);
+  }
+
+  .reset-footer {
+    text-align: center;
+    margin-top: 16px;
+  }
+
+  .btn-danger {
+    background: transparent;
+    border: 1.5px solid #CCC;
+    color: #666;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+
+  .btn-danger:hover {
+    border-color: #FF6B6B;
+    color: #FF6B6B;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>🃏 數字搶地盤計算助手</h1>
+    <div class="rule-badges">
+      <span class="badge">♠ 加 (+)</span>
+      <span class="badge red">♥ 減 (−)</span>
+      <span class="badge red">♦ 乘 (×)</span>
+      <span class="badge">♣ 除 (÷)</span>
+      <span class="badge">支援小括號｜除法四捨五入至小數第一位</span>
+    </div>
+  </header>
+
+  <!-- 1. 五個地盤設定 -->
+  <div class="card">
+    <div class="section-title">
+      <span>🚩 步驟一：設定五個地盤目標（點擊選擇目前爭奪地盤）</span>
+      <button class="helper-toggle" onclick="toggleHelper()">🎲 地盤牌換算小幫手</button>
+    </div>
+
+    <div class="helper-panel" id="helperPanel">
+      <strong>規則提示：</strong>抽出兩張牌，若<strong>兩張皆 ≤ 6</strong> 依序組成兩位數（如 3、5 = 35）；若<strong>至少一張 ≥ 7</strong> 則兩張相加（如 8、5 = 13）。<br>
+      <div style="margin-top:8px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        第1張：<select id="hCard1" style="max-width:100px;"></select>
+        第2張：<select id="hCard2" style="max-width:100px;"></select>
+        <button class="helper-toggle" style="background:#FFB800; color:#222;" onclick="applyHelper()">填入目前選中地盤</button>
+      </div>
+    </div>
+
+    <div class="territories-grid" id="territoriesGrid"></div>
+  </div>
+
+  <!-- 2. 雙方出牌計算區 -->
+  <div class="card">
+    <div class="section-title">
+      <span id="currentRoundTitle">⚔️ 步驟二：目前爭奪【地盤 1】（目標數字：25）</span>
+    </div>
+
+    <div class="players-grid">
+      <!-- 玩家 1 (紅隊) -->
+      <div class="player-panel p1">
+        <div class="player-header">
+          <input type="text" class="player-name" id="p1Name" value="玩家 A" onchange="updateAll()">
+          <span style="font-size:0.8rem; color:#D94848; font-weight:700;">先手 / 紅方</span>
+        </div>
+
+        <div class="bracket-select-box">
+          <span>括號設定：</span>
+          <select id="p1Bracket" onchange="updateAll()" style="flex:1; margin-left:8px;">
+            <option value="none">無括號（先乘除後加減）</option>
+            <option value="left">( 第1張 + 第2張 ) 先算</option>
+            <option value="right">先算 ( 第2張 + 第3張 )</option>
+          </select>
+        </div>
+
+        <div class="card-slot">
+          <span class="slot-label">第 1 張牌</span>
+          <select id="p1s1" onchange="updateAll()"></select>
+          <select id="p1v1" onchange="updateAll()"></select>
+        </div>
+        <div class="card-slot">
+          <span class="slot-label">第 2 張牌</span>
+          <select id="p1s2" onchange="updateAll()"></select>
+          <select id="p1v2" onchange="updateAll()"></select>
+        </div>
+        <div class="card-slot">
+          <span class="slot-label">第 3 張牌</span>
+          <span style="font-size:0.8rem; color:#888; font-weight:700; flex:1; text-align:center;">（末張無運算符號）</span>
+          <select id="p1v3" onchange="updateAll()"></select>
+        </div>
+
+        <div class="formula-preview">
+          <div class="formula-text" id="p1Formula">1 + 1 + 1 = 3</div>
+          <div class="diff-text" id="p1Diff">與目標差距：22</div>
+        </div>
+
+        <label class="invalid-check">
+          <input type="checkbox" id="p1Invalid" onchange="updateAll()">
+          公開後發現算式錯誤 / 違規（本回合挑戰無效）
+        </label>
+      </div>
+
+      <!-- 玩家 2 (藍隊) -->
+      <div class="player-panel p2">
+        <div class="player-header">
+          <input type="text" class="player-name" id="p2Name" value="玩家 B" onchange="updateAll()">
+          <span style="font-size:0.8rem; color:#2B7DE9; font-weight:700;">後手 / 藍方</span>
+        </div>
+
+        <div class="bracket-select-box">
+          <span>括號設定：</span>
+          <select id="p2Bracket" onchange="updateAll()" style="flex:1; margin-left:8px;">
+            <option value="none">無括號（先乘除後加減）</option>
+            <option value="left">( 第1張 + 第2張 ) 先算</option>
+            <option value="right">先算 ( 第2張 + 第3張 )</option>
+          </select>
+        </div>
+
+        <div class="card-slot">
+          <span class="slot-label">第 1 張牌</span>
+          <select id="p2s1" onchange="updateAll()"></select>
+          <select id="p2v1" onchange="updateAll()"></select>
+        </div>
+        <div class="card-slot">
+          <span class="slot-label">第 2 張牌</span>
+          <select id="p2s2" onchange="updateAll()"></select>
+          <select id="p2v2" onchange="updateAll()"></select>
+        </div>
+        <div class="card-slot">
+          <span class="slot-label">第 3 張牌</span>
+          <span style="font-size:0.8rem; color:#888; font-weight:700; flex:1; text-align:center;">（末張無運算符號）</span>
+          <select id="p2v3" onchange="updateAll()"></select>
+        </div>
+
+        <div class="formula-preview">
+          <div class="formula-text" id="p2Formula">1 + 1 + 1 = 3</div>
+          <div class="diff-text" id="p2Diff">與目標差距：22</div>
+        </div>
+
+        <label class="invalid-check">
+          <input type="checkbox" id="p2Invalid" onchange="updateAll()">
+          公開後發現算式錯誤 / 違規（本回合挑戰無效）
+        </label>
+      </div>
+    </div>
+
+    <div class="action-bar">
+      <button class="btn btn-secondary" onclick="clearCurrentInputs()">清空本局手牌</button>
+      <button class="btn btn-primary" onclick="judgeAndSave()">⚖️ 比較差距並記錄地盤歸屬</button>
+    </div>
+
+    <div class="result-banner" id="resultBanner"></div>
+  </div>
+
+  <!-- 3. 戰績統計與最終勝負 -->
+  <div class="card">
+    <div class="section-title">
+      <span>🏆 步驟三：五回合戰績紀錄與總勝負判定</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>地盤</th>
+          <th>目標</th>
+          <th id="thP1">玩家 A 算式 (差距)</th>
+          <th id="thP2">玩家 B 算式 (差距)</th>
+          <th>地盤歸屬</th>
+        </tr>
+      </thead>
+      <tbody id="historyBody"></tbody>
+    </table>
+
+    <div class="final-box" id="finalSummary">
+      目前戰況：玩家 A 0 地盤 ｜ 玩家 B 0 地盤（尚未完成五回合）
+    </div>
+
+    <div class="reset-footer">
+      <button class="btn-danger" onclick="resetAllGame()">🔄 重新開始新的一局（清除所有紀錄）</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const SUITS = [
+    { symbol: '+', label: '♠ 加 (+)' },
+    { symbol: '-', label: '♥ 減 (−)' },
+    { symbol: '*', label: '♦ 乘 (×)' },
+    { symbol: '/', label: '♣ 除 (÷)' }
+  ];
+
+  const VALUES = [
+    { val: 1, label: 'A (1)' }, { val: 2, label: '2' }, { val: 3, label: '3' },
+    { val: 4, label: '4' }, { val: 5, label: '5' }, { val: 6, label: '6' },
+    { val: 7, label: '7' }, { val: 8, label: '8' }, { val: 9, label: '9' },
+    { val: 10, label: '10' }, { val: 11, label: 'J (11)' }, { val: 12, label: 'Q (12)' },
+    { val: 13, label: 'K (13)' }
+  ];
+
+  let activeTerritory = 0;
+  let territories = [25, 18, 42, 15, 34];
+  let records = [null, null, null, null, null];
+
+  function initSelects() {
+    const suitIds = ['p1s1', 'p1s2', 'p2s1', 'p2s2'];
+    suitIds.forEach(id => {
+      const sel = document.getElementById(id);
+      SUITS.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.symbol;
+        opt.textContent = s.label;
+        sel.appendChild(opt);
+      });
+    });
+
+    const valIds = ['p1v1', 'p1v2', 'p1v3', 'p2v1', 'p2v2', 'p2v3', 'hCard1', 'hCard2'];
+    valIds.forEach(id => {
+      const sel = document.getElementById(id);
+      VALUES.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v.val;
+        opt.textContent = v.label;
+        sel.appendChild(opt);
+      });
+    });
+  }
+
+  function renderTerritories() {
+    const grid = document.getElementById('territoriesGrid');
+    grid.innerHTML = '';
+    const p1Name = document.getElementById('p1Name').value || '玩家 A';
+    const p2Name = document.getElementById('p2Name').value || '玩家 B';
+
+    territories.forEach((target, idx) => {
+      const box = document.createElement('div');
+      let statusClass = '';
+      let statusText = '待爭奪';
+
+      if (records[idx]) {
+        if (records[idx].winner === 'p1') {
+          statusClass = 'done-p1';
+          statusText = `👑 ${p1Name}`;
+        } else if (records[idx].winner === 'p2') {
+          statusClass = 'done-p2';
+          statusText = `👑 ${p2Name}`;
+        } else {
+          statusClass = 'done-tie';
+          statusText = '🤝 平手';
+        }
+      }
+
+      box.className = `territory-box ${statusClass} ${activeTerritory === idx ? 'active' : ''}`;
+      box.onclick = (e) => {
+        if (e.target.tagName !== 'INPUT') {
+          activeTerritory = idx;
+          document.getElementById('resultBanner').style.display = 'none';
+          renderTerritories();
+          updateAll();
+        }
+      };
+
+      box.innerHTML = `
+        <div class="territory-label">地盤 ${idx + 1}</div>
+        <input type="number" class="territory-input" value="${target}" 
+          onchange="updateTarget(${idx}, this.value)" onclick="activeTerritory=${idx}; renderTerritories(); updateAll();">
+        <div class="territory-status">${statusText}</div>
+      `;
+      grid.appendChild(box);
+    });
+  }
+
+  function updateTarget(idx, val) {
+    const num = parseFloat(val);
+    territories[idx] = isNaN(num) ? 0 : num;
+    updateAll();
+  }
+
+  function toggleHelper() {
+    document.getElementById('helperPanel').classList.toggle('open');
+  }
+
+  function applyHelper() {
+    const c1 = parseInt(document.getElementById('hCard1').value);
+    const c2 = parseInt(document.getElementById('hCard2').value);
+    let result = (c1 <= 6 && c2 <= 6) ? (c1 * 10 + c2) : (c1 + c2);
+    territories[activeTerritory] = result;
+    renderTerritories();
+    updateAll();
+  }
+
+  function evaluateFormula(n1, op1, n2, op2, n3, bracket) {
+    const displayOp = (op) => ({ '+': '+', '-': '−', '*': '×', '/': '÷' }[op]);
+    const applyOp = (a, op, b) => {
+      if (op === '+') return a + b;
+      if (op === '-') return a - b;
+      if (op === '*') return a * b;
+      if (op === '/') return b === 0 ? 0 : a / b;
+    };
+
+    let exprText = '';
+    let rawResult = 0;
+
+    if (bracket === 'left') {
+      exprText = `(${n1} ${displayOp(op1)} ${n2}) ${displayOp(op2)} ${n3}`;
+      rawResult = applyOp(applyOp(n1, op1, n2), op2, n3);
+    } else if (bracket === 'right') {
+      exprText = `${n1} ${displayOp(op1)} (${n2} ${displayOp(op2)} ${n3})`;
+      rawResult = applyOp(n1, op1, applyOp(n2, op2, n3));
+    } else {
+      exprText = `${n1} ${displayOp(op1)} ${n2} ${displayOp(op2)} ${n3}`;
+      const isHigh = (op) => op === '*' || op === '/';
+      if (!isHigh(op1) && isHigh(op2)) {
+        rawResult = applyOp(n1, op1, applyOp(n2, op2, n3));
+      } else {
+        rawResult = applyOp(applyOp(n1, op1, n2), op2, n3);
+      }
+    }
+
+    const rounded = Math.round(rawResult * 10) / 10;
+    return { exprText, result: rounded };
+  }
+
+  function getPlayerCalc(prefix, target) {
+    const n1 = parseInt(document.getElementById(prefix + 'v1').value);
+    const op1 = document.getElementById(prefix + 's1').value;
+    const n2 = parseInt(document.getElementById(prefix + 'v2').value);
+    const op2 = document.getElementById(prefix + 's2').value;
+    const n3 = parseInt(document.getElementById(prefix + 'v3').value);
+    const bracket = document.getElementById(prefix + 'Bracket').value;
+    const invalid = document.getElementById(prefix + 'Invalid').checked;
+
+    const { exprText, result } = evaluateFormula(n1, op1, n2, op2, n3, bracket);
+    const diff = Math.round(Math.abs(result - target) * 10) / 10;
+
+    return { exprText, result, diff, invalid };
+  }
+
+  function updateAll() {
+    const target = territories[activeTerritory];
+    const p1Name = document.getElementById('p1Name').value || '玩家 A';
+    const p2Name = document.getElementById('p2Name').value || '玩家 B';
+
+    document.getElementById('currentRoundTitle').textContent =
+      `⚔️ 步驟二：目前爭奪【地盤 ${activeTerritory + 1}】（目標數字：${target}）`;
+    document.getElementById('thP1').textContent = `${p1Name} 算式 (差距)`;
+    document.getElementById('thP2').textContent = `${p2Name} 算式 (差距)`;
+
+    const p1 = getPlayerCalc('p1', target);
+    const p2 = getPlayerCalc('p2', target);
+
+    document.getElementById('p1Formula').textContent = p1.invalid ? `${p1.exprText} (挑戰無效)` : `${p1.exprText} = ${p1.result}`;
+    document.getElementById('p1Diff').textContent = p1.invalid ? '判定失格' : `與目標差距：${p1.diff}`;
+
+    document.getElementById('p2Formula').textContent = p2.invalid ? `${p2.exprText} (挑戰無效)` : `${p2.exprText} = ${p2.result}`;
+    document.getElementById('p2Diff').textContent = p2.invalid ? '判定失格' : `與目標差距：${p2.diff}`;
+
+    renderHistory();
+  }
+
+  function judgeAndSave() {
+    const target = territories[activeTerritory];
+    const p1Name = document.getElementById('p1Name').value || '玩家 A';
+    const p2Name = document.getElementById('p2Name').value || '玩家 B';
+    const p1 = getPlayerCalc('p1', target);
+    const p2 = getPlayerCalc('p2', target);
+
+    let winner = 'tie';
+    let msg = '';
+
+    if (p1.invalid && p2.invalid) {
+      winner = 'tie';
+      msg = `雙方皆算式違規無效，【地盤 ${activeTerritory + 1}】判定平手！`;
+    } else if (p1.invalid) {
+      winner = 'p2';
+      msg = `${p1Name} 挑戰無效，由【${p2Name}】拿下地盤 ${activeTerritory + 1}！`;
+    } else if (p2.invalid) {
+      winner = 'p1';
+      msg = `${p2Name} 挑戰無效，由【${p1Name}】拿下地盤 ${activeTerritory + 1}！`;
+    } else if (p1.diff < p2.diff) {
+      winner = 'p1';
+      msg = `🎉 【${p1Name}】差距較小（${p1.diff} < ${p2.diff}），成功搶下地盤 ${activeTerritory + 1}！`;
+    } else if (p2.diff < p1.diff) {
+      winner = 'p2';
+      msg = `🎉 【${p2Name}】差距較小（${p2.diff} < ${p1.diff}），成功搶下地盤 ${activeTerritory + 1}！`;
+    } else {
+      winner = 'tie';
+      msg = `🤝 雙方差距相同（皆為 ${p1.diff}），【地盤 ${activeTerritory + 1}】平手！`;
+    }
+
+    records[activeTerritory] = {
+      target,
+      p1Text: p1.invalid ? '挑戰無效' : `${p1.exprText} = ${p1.result} (差 ${p1.diff})`,
+      p2Text: p2.invalid ? '挑戰無效' : `${p2.exprText} = ${p2.result} (差 ${p2.diff})`,
+      p1Diff: p1.invalid ? Infinity : p1.diff,
+      p2Diff: p2.invalid ? Infinity : p2.diff,
+      winner
+    };
+
+    const banner = document.getElementById('resultBanner');
+    banner.style.display = 'block';
+    banner.style.background = winner === 'p1' ? '#FFE8E8' : winner === 'p2' ? '#E6F0FF' : '#EEEEEE';
+    banner.style.color = winner === 'p1' ? '#C92A2A' : winner === 'p2' ? '#1864AB' : '#333';
+    banner.textContent = msg;
+
+    const nextIdx = records.findIndex(r => r === null);
+    if (nextIdx !== -1) {
+      activeTerritory = nextIdx;
+    }
+
+    renderTerritories();
+    updateAll();
+  }
+
+  function renderHistory() {
+    const tbody = document.getElementById('historyBody');
+    tbody.innerHTML = '';
+    const p1Name = document.getElementById('p1Name').value || '玩家 A';
+    const p2Name = document.getElementById('p2Name').value || '玩家 B';
+
+    let p1Wins = 0, p2Wins = 0;
+    let p1WinDiffSum = 0, p2WinDiffSum = 0;
+    let completedCount = 0;
+
+    records.forEach((rec, idx) => {
+      const tr = document.createElement('tr');
+      if (!rec) {
+        tr.innerHTML = `<td>地盤 ${idx + 1}</td><td>${territories[idx]}</td><td style="color:#AAA;">—</td><td style="color:#AAA;">—</td><td style="color:#AAA;">尚未進行</td>`;
+      } else {
+        completedCount++;
+        let ownerLabel = '平手';
+        if (rec.winner === 'p1') {
+          p1Wins++;
+          p1WinDiffSum = Math.round((p1WinDiffSum + rec.p1Diff) * 10) / 10;
+          ownerLabel = `<strong style="color:#D94848;">${p1Name}</strong>`;
+        } else if (rec.winner === 'p2') {
+          p2Wins++;
+          p2WinDiffSum = Math.round((p2WinDiffSum + rec.p2Diff) * 10) / 10;
+          ownerLabel = `<strong style="color:#2B7DE9;">${p2Name}</strong>`;
+        }
+        tr.innerHTML = `<td><strong>地盤 ${idx + 1}</strong></td><td>${rec.target}</td><td>${rec.p1Text}</td><td>${rec.p2Text}</td><td>${ownerLabel}</td>`;
+      }
+      tbody.appendChild(tr);
+    });
+
+    const summary = document.getElementById('finalSummary');
+    if (completedCount < 5) {
+      summary.innerHTML = `目前戰況（已完成 ${completedCount}/5 回合）：<br>${p1Name}：${p1Wins} 地盤（獲勝地盤總差距 ${p1WinDiffSum}） ｜ ${p2Name}：${p2Wins} 地盤（獲勝地盤總差距 ${p2WinDiffSum}）`;
+    } else {
+      let finalResult = '';
+      if (p1Wins > p2Wins) {
+        finalResult = `🏆 最終總冠軍：【${p1Name}】（${p1Wins} 比 ${p2Wins} 地盤）`;
+      } else if (p2Wins > p1Wins) {
+        finalResult = `🏆 最終總冠軍：【${p2Name}】（${p2Wins} 比 ${p1Wins} 地盤）`;
+      } else {
+        if (p1WinDiffSum < p2WinDiffSum) {
+          finalResult = `🏆 地盤數平手（${p1Wins}:${p2Wins}），比較獲勝地盤總差距（${p1WinDiffSum} < ${p2WinDiffSum}），由【${p1Name}】獲勝！`;
+        } else if (p2WinDiffSum < p1WinDiffSum) {
+          finalResult = `🏆 地盤數平手（${p1Wins}:${p2Wins}），比較獲勝地盤總差距（${p2WinDiffSum} < ${p1WinDiffSum}），由【${p2Name}】獲勝！`;
+        } else {
+          finalResult = `🤝 地盤數（${p1Wins}:${p2Wins}）與總差距（${p1WinDiffSum}）皆完全相同，雙方共同獲勝！`;
+        }
+      }
+      summary.innerHTML = finalResult;
+    }
+  }
+
+  function clearCurrentInputs() {
+    ['p1v1', 'p1v2', 'p1v3', 'p2v1', 'p2v2', 'p2v3'].forEach(id => document.getElementById(id).value = '1');
+    ['p1s1', 'p1s2', 'p2s1', 'p2s2'].forEach(id => document.getElementById(id).value = '+');
+    document.getElementById('p1Bracket').value = 'none';
+    document.getElementById('p2Bracket').value = 'none';
+    document.getElementById('p1Invalid').checked = false;
+    document.getElementById('p2Invalid').checked = false;
+    document.getElementById('resultBanner').style.display = 'none';
+    updateAll();
+  }
+
+  function resetAllGame() {
+    if (!confirm('確定要清除所有地盤紀錄並重新開始嗎？')) return;
+    records = [null, null, null, null, null];
+    activeTerritory = 0;
+    clearCurrentInputs();
+    renderTerritories();
+    updateAll();
+  }
+
+  initSelects();
+  renderTerritories();
+  updateAll();
+</script>
+
+</body>
+</html>
